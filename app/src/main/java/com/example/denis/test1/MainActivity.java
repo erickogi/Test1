@@ -1,5 +1,28 @@
 package com.example.denis.test1;
 
+
+
+import android.content.Intent;
+import android.location.Address;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.ResultReceiver;
+import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
+import android.view.View;
+import android.widget.CheckBox;
+import android.widget.EditText;
+import android.widget.ProgressBar;
+
+
+
+
+
+
+
+
+
+
 import android.Manifest;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -22,7 +45,10 @@ import android.view.MenuInflater;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -54,12 +80,16 @@ public class MainActivity extends AppCompatActivity implements
         GoogleMap.OnMarkerClickListener,
         ResultCallback<Status> {
     private static final String TAG = MainActivity.class.getSimpleName();
-  //declare Our views
+    AddressResultReceiver mResultReceiver;
+
+    //declare Our views
+    Button buttonSearch;
+    EditText editTextName;
     private TextView textLat, textLong;
     private MapFragment mapFragment;
     private GoogleMap map;
 
-
+    ProgressBar progressBar;
 
     private GoogleApiClient googleApiClient;
     private Location lastLocation;
@@ -78,6 +108,30 @@ public class MainActivity extends AppCompatActivity implements
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+
+        mResultReceiver = new AddressResultReceiver(null);
+        buttonSearch=(Button)findViewById(R.id.btn_search);
+        editTextName=(EditText)findViewById(R.id.edt_name) ;
+        progressBar = (ProgressBar) findViewById(R.id.progressBar);
+        final Intent intent = new Intent(this, GeocodeAddressIntentService.class);
+        intent.putExtra(Constants.RECEIVER, mResultReceiver);
+        intent.putExtra(Constants.FETCH_TYPE_EXTRA, 1);
+        buttonSearch.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                if(editTextName.getText().toString().equals("")){
+
+                }
+                else{
+                    intent.putExtra(Constants.LOCATION_NAME_DATA_EXTRA, editTextName.getText().toString());
+                    progressBar.setVisibility(View.VISIBLE);
+                    startService(intent);
+                }
+            }
+        });
+
+
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
@@ -477,5 +531,45 @@ public class MainActivity extends AppCompatActivity implements
         if ( geoFenceLimits != null )
             geoFenceLimits.remove();
     }
+    class AddressResultReceiver extends ResultReceiver {
+        public AddressResultReceiver(Handler handler) {
+            super(handler);
+        }
 
+        @Override
+        protected void onReceiveResult(int resultCode, final Bundle resultData) {
+            if (resultCode == Constants.SUCCESS_RESULT) {
+                final Address address = resultData.getParcelable(Constants.RESULT_ADDRESS);
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        progressBar.setVisibility(View.GONE);
+                       // infoText.setVisibility(View.VISIBLE);
+
+
+
+                        Double lati=Double.valueOf(address.getLatitude());
+                        Double longi=Double.valueOf(address.getLongitude());
+                        LatLng lat=new LatLng(lati,longi);
+                        markerForGeofence(lat);
+                        Toast.makeText(MainActivity.this, ""+address.getLongitude(), Toast.LENGTH_SHORT).show();
+
+//                        infoText.setText("Latitude: " + address.getLatitude() + "\n" +
+//                                "Longitude: " + address.getLongitude() + "\n" +
+//                                "Address: " + resultData.getString(Constants.RESULT_DATA_KEY));
+                    }
+                });
+            }
+            else {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        progressBar.setVisibility(View.GONE);
+                       // i
+                       // infoText.setText(resultData.getString(Constants.RESULT_DATA_KEY));
+                    }
+                });
+            }
+        }
+    }
 }
